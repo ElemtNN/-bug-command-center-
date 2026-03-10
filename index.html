@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bug Command Center · ecomm-app</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F0F4FA;
+    --surface: #FFFFFF;
+    --card: #FFFFFF;
+    --border: #DDE3EF;
+    --accent: #0077CC;
+    --green: #00966A;
+    --yellow: #D48A00;
+    --red: #D9283D;
+    --orange: #D95B10;
+    --text: #0F1D33;
+    --muted: #6B7A99;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #C5CFDF; border-radius: 3px; }
+
+  /* HEADER */
+  .header { background: linear-gradient(135deg, #E8EFF8 0%, #FFFFFF 100%); border-bottom: 1px solid var(--border); padding: 20px 32px; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .logo-box { background: linear-gradient(135deg, var(--accent), #004A88); border-radius: 12px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .header-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; }
+  .header-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .header-actions { display: flex; gap: 12px; align-items: center; }
+  .live-badge { background: #00966A18; border: 1px solid #00966A44; border-radius: 8px; padding: 4px 14px; font-size: 12px; color: var(--green); }
+  .upload-btn { background: #EAF3FC; border: 1px dashed #0077CC55; color: var(--accent); border-radius: 8px; padding: 6px 16px; cursor: pointer; font-size: 13px; font-family: inherit; transition: .2s; display: inline-flex; align-items: center; gap: 6px; }
+  .upload-btn:hover { background: #D5E8F8; }
+  .upload-btn input { display: none; }
+  .tabs { display: flex; gap: 4px; margin-top: 20px; }
+  .tab { padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; border: none; transition: all .2s; font-family: inherit; background: transparent; color: var(--muted); }
+  .tab.active { background: var(--accent); color: #FFF; }
+
+  /* FILTERS */
+  .filters-bar { background: #FFF; border-bottom: 1px solid var(--border); padding: 12px 32px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; box-shadow: 0 2px 8px #00000008; }
+  .filter-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-right: 2px; }
+  .sem-btn { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all .15s; font-family: inherit; }
+  .sem-btn.active { border-color: var(--accent); background: var(--accent); color: #FFF; }
+  .clear-btn { padding: 5px 12px; border-radius: 8px; border: 1px solid #0077CC44; background: transparent; color: var(--accent); cursor: pointer; font-size: 12px; font-family: inherit; }
+  .total-count { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+  /* MAIN */
+  .main { padding: 24px 32px; }
+
+  /* KPI CARDS */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; position: relative; overflow: hidden; transition: .2s; }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px #0077CC18; }
+  .kpi-icon-bg { position: absolute; right: -14px; top: -14px; font-size: 64px; opacity: .05; pointer-events: none; }
+  .kpi-label { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; margin-bottom: 8px; }
+  .kpi-value { font-family: 'Space Grotesk', sans-serif; font-weight: 700; line-height: 1; }
+  .kpi-sub { font-size: 13px; color: var(--muted); margin: 6px 0 10px; }
+  .kpi-bar { background: var(--border); border-radius: 4px; height: 5px; margin-bottom: 10px; }
+  .kpi-bar-fill { height: 5px; border-radius: 4px; transition: width .4s; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag { border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+
+  /* CHARTS */
+  .charts-row { display: grid; gap: 20px; margin-bottom: 20px; }
+  .charts-2col { grid-template-columns: 1fr 1fr; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .chart-title { font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap-lg { position: relative; height: 220px; }
+
+  /* PIE LEGEND */
+  .pie-container { display: flex; align-items: center; gap: 24px; }
+  .pie-legend { flex: 1; }
+  .pie-legend-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .pie-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* INSIGHTS */
+  .insights-box { background: linear-gradient(135deg, #EAF4FF, #F0FDF8); border: 1px solid #0077CC22; border-radius: 16px; padding: 22px 28px; margin-top: 4px; }
+  .insights-label { font-size: 11px; color: var(--accent); font-weight: 700; letter-spacing: 1px; margin-bottom: 14px; }
+  .insights-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+  .insight-item { background: #FFF; border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.6; color: #334466; }
+
+  /* MODULOS */
+  .mod-bar-wrap { margin-bottom: 14px; }
+  .mod-bar-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 13px; }
+  .mod-bar-track { background: var(--border); border-radius: 4px; height: 6px; }
+  .mod-bar-fill { height: 6px; border-radius: 4px; transition: width .4s; }
+  .mod-pct { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* HEATMAP */
+  .heatmap-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .heatmap-table th { padding: 8px 12px; color: var(--muted); font-weight: 600; text-align: left; }
+  .heatmap-table th:not(:first-child) { text-align: center; }
+  .heatmap-table td { padding: 8px 12px; }
+  .heatmap-table td:not(:first-child) { text-align: center; font-weight: 600; border-radius: 4px; }
+  .heatmap-table tr { border-bottom: 1px solid #DDE3EF44; }
+
+  /* TABLE */
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .bug-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .bug-table th { padding: 12px 14px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid var(--border); white-space: nowrap; background: #F5F8FC; }
+  .bug-table td { padding: 10px 14px; border-bottom: 1px solid #DDE3EF33; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .bug-table tr:hover td { background: #EEF4FB; cursor: pointer; }
+  .chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .pagination { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-top: 1px solid var(--border); background: #F5F8FC; }
+  .page-info { font-size: 12px; color: var(--muted); }
+  .page-btns { display: flex; gap: 6px; }
+  .page-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit; }
+  .page-btn.active { background: var(--accent); color: #FFF; border-color: var(--accent); }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: #00000055; z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; max-width: 600px; width: 100%; position: relative; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; font-family: inherit; }
+  .modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .modal-desc { margin: 0 0 20px; font-size: 15px; line-height: 1.6; }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-field { background: #F5F8FC; border-radius: 8px; padding: 10px 14px; border: 1px solid #DDE3EF; }
+  .modal-field-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .modal-field-value { font-size: 13px; font-weight: 600; }
+
+  /* TABS CONTENT */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  @media (max-width: 768px) {
+    .charts-2col { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .main { padding: 16px; }
+    .header { padding: 16px; }
+    .filters-bar { padding: 10px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="logo-box">🐞</div>
+      <div>
+        <div class="header-title">Bug Command Center</div>
+        <div class="header-sub">ecomm-app · QA Support</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="live-badge">🟢 Live</div>
+      <label class="upload-btn">
+        📂 Actualizar Excel
+        <input type="file" accept=".xlsx,.xls" id="fileInput">
+      </label>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">📊 Overview</button>
+    <button class="tab" onclick="switchTab('modulos')">🗂️ Módulos</button>
+    <button class="tab" onclick="switchTab('tabla')">📋 Registros</button>
+  </div>
+</div>
+
+<!-- FILTERS BAR -->
+<div class="filters-bar">
+  <span class="filter-label">SEMANA</span>
+  <div id="semBtns" style="display:flex;gap:6px">
+    <button class="sem-btn active" onclick="setFilter('Todas')">Todas las semanas</button>
+    <button class="sem-btn" onclick="setFilter('Semana 1')">Semana 1</button>
+    <button class="sem-btn" onclick="setFilter('Semana 2')">Semana 2</button>
+    <button class="sem-btn" onclick="setFilter('Semana 3')">Semana 3</button>
+  </div>
+  <button class="clear-btn" id="clearBtn" style="display:none" onclick="setFilter('Todas')">✕ Limpiar</button>
+  <span class="total-count" id="totalCount">0 bugs</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- TAB: OVERVIEW -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="charts-row charts-2col">
+      <div class="chart-card">
+        <div class="chart-title">Bugs por Semana</div>
+        <div class="chart-wrap"><canvas id="chartSemana"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribución por Severidad</div>
+        <div class="pie-container">
+          <div style="position:relative;height:200px;width:55%"><canvas id="chartSev"></canvas></div>
+          <div class="pie-legend" id="sevLegend"></div>
+        </div>
+      </div>
+    </div>
+    <div class="charts-row charts-2col">
+      <div class="chart-card">
+        <div class="chart-title">Tipo de Error</div>
+        <div class="chart-wrap-lg"><canvas id="chartTipo"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Canal de Reporte</div>
+        <div class="chart-wrap-lg"><canvas id="chartCanal"></canvas></div>
+      </div>
+    </div>
+    <div class="insights-box">
+      <div class="insights-label" id="insightsLabel">📌 RESUMEN DE INSIGHTS</div>
+      <div class="insights-grid" id="insightsGrid"></div>
+    </div>
+  </div>
+
+  <!-- TAB: MODULOS -->
+  <div class="tab-content" id="tab-modulos">
+    <div class="charts-row charts-2col">
+      <div class="chart-card">
+        <div class="chart-title">Top 8 Módulos</div>
+        <div id="modList"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Top 8 Submódulos</div>
+        <div id="subList"></div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-top:0">
+      <div class="chart-title">Heatmap: Módulos × Semana</div>
+      <div style="overflow-x:auto"><table class="heatmap-table" id="heatmapTable"></table></div>
+    </div>
+  </div>
+
+  <!-- TAB: TABLA -->
+  <div class="tab-content" id="tab-tabla">
+    <div class="table-card">
+      <div style="overflow-x:auto">
+        <table class="bug-table">
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Semana</th><th>Módulo</th><th>Submódulo</th>
+              <th>Canal</th><th>Tipo</th><th>Severidad</th><th>Estado</th>
+              <th>Cliente</th><th>Descripción</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span class="page-info" id="pageInfo"></span>
+        <div class="page-btns" id="pageBtns"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" style="display:none" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-header">
+      <div style="font-size:32px">🐛</div>
+      <div id="modalBadges"></div>
+    </div>
+    <p class="modal-desc" id="modalDesc"></p>
+    <div class="modal-grid" id="modalGrid"></div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const SEV_COLOR = { Urgente: "#D9283D", Alta: "#D95B10", Media: "#D48A00", Baja: "#00966A" };
+const TIPO_COLOR = {
+  Sync: "#00C2FF", Validación: "#A78BFA", Backend: "#FF7B39",
+  Excel: "#00E5A0", Performance: "#FFB800", UI: "#F472B6",
+  Datos: "#67E8F9", Legacy: "#94A3B8", Integración: "#E879F9"
+};
+const CANAL_COLOR = {
+  "General": "#00C2FF", "Mercado Libre": "#FFB800", "Tiendanube": "#00E5A0",
+  "Local físico": "#A78BFA", "Configuración": "#F472B6", "Métricas": "#67E8F9",
+  "Mercado Pago": "#FF7B39", "WooCommerce": "#7C3AED", "Canales externos": "#EC4899"
+};
+
+let RAW = [{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Mercado Libre - Preguntas","submodulo":"Preguntas","canal":"Mercado Libre","tipo":"Validación","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"METALSER","descripcion":"ML - Preguntas: Solicita sacar leyenda de Respuesta automática - METALSER"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Sync","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"LA CALCOMERIA","descripcion":"Gestión Inventario: No toma stock en TN para mismo SKU vinculado a ML - LA CALCOMERIA"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Local físico - Presupuestos","submodulo":"Presupuestos","canal":"Local físico","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"LOYEVO","descripcion":"Local físico - Presupuestos: Eliminó productos y no devolvió stock - LOYEVO"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Métricas - Local físico","submodulo":"Indicadores / métricas","canal":"Métricas","tipo":"UI","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"LOYEVO","descripcion":"Métricas - Local físico: No aparece monto de cierre en reporte - LOYEVO"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Local físico - Emitir comprobantes","submodulo":"Emisión comprobantes","canal":"Local físico","tipo":"Backend","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"ARTELIFE","descripcion":"Local Fisico - Comprobante: Se duplican artículos al escanear GTIN - ARTELIFE"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Backend","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"MARIANO LORIDO","descripcion":"ML - Ventas: Mas de 5 ventas para facturar masivo se cuelga - MARIANO LORIDO"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Tiendanube - Ventas","submodulo":"Ventas","canal":"Tiendanube","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"Vidativa","descripcion":"Tiendanube - Ventas: Error al facturar desde TN facturación - Vidativa"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Otros / Legacy","submodulo":"Legacy / Refactor","canal":"General","tipo":"Performance","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"TODOARIKOL","descripcion":"General: Reporta lentitud en la plataforma al ingresar - TODOARIKOL"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Inicio / Dashboard","submodulo":"Dashboard","canal":"General","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"","descripcion":"Inicio: Usuarios reportan deslogueo constante cada 5 min"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Sincronización stock","canal":"General","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"DUPREELECTROSPORTS","descripcion":"Gestión Inventario: Diferente stock en publicaciones ML - DUPREELECTROSPORTS"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Validación","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"ACCESIBBLE","descripcion":"Gestión Inventario: Modificaron SKU, aparecen diferentes en ML - ACCESIBBLE"},{"fecha":"2026-02-23","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"PRIMEROSPASITOSOK","descripcion":"Gestión Inventario: Error al cambiar SKU de una variante - PRIMEROSPASITOSOK"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Carga masiva","canal":"General","tipo":"Validación","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"CLOTEX","descripcion":"Gestión Inventario: Producto individual pasó a combo automáticamente - CLOTEX"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Excel","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"VEXMEL","descripcion":"ML - Ventas: Descarga exportable ventas, recibió mail vacío - VEXMEL"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Publicaciones","canal":"General","tipo":"Performance","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"DUPREELECTROSPORTS","descripcion":"Gestión Inventario: Lentitud en la plataforma - DUPREELECTROSPORTS"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Sincronización stock","canal":"General","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"DUPREELECTROSPORTS","descripcion":"Gestión Inventario: Diferente stock ML vs visual - DUPREELECTROSPORTS"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Mercado Libre - Publicaciones","submodulo":"Publicaciones","canal":"Mercado Libre","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"LITE SHOP","descripcion":"ML - Publicaciones: EA muestra stock en producto con stock 0 - LITE SHOP"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"HATTISHOP","descripcion":"Gestión Inventario: Aparecen vinculadas publis ML que no lo están - HATTISHOP"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Local físico - Emitir comprobantes","submodulo":"Emisión comprobantes","canal":"Local físico","tipo":"UI","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"LOYEVO","descripcion":"Local físico - Comprobante: Factura no figura en movimientos caja - LOYEVO"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"MERY PACK","descripcion":"Gestión Inventario: Publis TN vinculadas con stock incorrecto - MERY PACK"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Excel Inventario","canal":"General","tipo":"Excel","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"SCRAPPILAR","descripcion":"Gestión Inventario: Carga Excel exitosa pero no refleja cambios - SCRAPPILAR"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"AVANT-STORE","descripcion":"TN - Migrador: Migró y vinculó pero no están vinculadas en inventario - AVANT-STORE"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Edición imágenes","submodulo":"Dashboard","canal":"General","tipo":"Validación","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"MRPLACADECO","descripcion":"Edición imágenes: Remoción de fondo no procesa y descuenta crédito - MRPLACADECO"},{"fecha":"2026-02-24","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"DAMEREGALOS","descripcion":"ML - Ventas: Se facturó masivamente venta cancelada/devolución - DAMEREGALOS"},{"fecha":"2026-02-25","semana":"Semana 1","modulo":"Local físico - Compras","submodulo":"Compras","canal":"Local físico","tipo":"Excel","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"WAYFARERARG","descripcion":"Local Fisico - Compras: Error en carga masiva excel ARCA - WAYFARERARG"},{"fecha":"2026-02-25","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Publicaciones","canal":"General","tipo":"Performance","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"BANGOVER","descripcion":"Gestión Inventario: Lentitud y cierre de sesión cada 5 min - BANGOVER"},{"fecha":"2026-02-25","semana":"Semana 1","modulo":"Otros / Legacy","submodulo":"Legacy / Refactor","canal":"General","tipo":"Backend","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"INVERSIONESNE","descripcion":"General: Se le cierra sesión constantemente - INVERSIONESNE"},{"fecha":"2026-02-25","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Excel Vinculación","canal":"General","tipo":"Excel","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"PROTOTYPE","descripcion":"Gestión Inventario: Carga masiva excel no impacta vinculaciones - PROTOTYPE"},{"fecha":"2026-02-25","semana":"Semana 1","modulo":"Local físico - Presupuestos","submodulo":"Presupuestos","canal":"Local físico","tipo":"Performance","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"TABOO SHOP","descripcion":"Local físico - Presupuestos: Reporta mucha lentitud al crear - TABOO SHOP"},{"fecha":"2026-02-25","semana":"Semana 1","modulo":"Local físico - Emitir comprobantes","submodulo":"Emisión comprobantes","canal":"Local físico","tipo":"Performance","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"VERDEAGUA","descripcion":"Local fisico - Comprobantes: Lentitud general al emitir - VERDEAGUA"},{"fecha":"2026-02-26","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Sincronización stock","canal":"General","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"","descripcion":"Reporte interno: Filtros Productos sin actualizar stock no funcionan en inventario"},{"fecha":"2026-02-26","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Excel","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"PROTOTYPE","descripcion":"ML - Ventas: Exportable ventas mail vacío / figura en proceso - PROTOTYPE"},{"fecha":"2026-02-26","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Publicaciones","canal":"General","tipo":"Performance","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"LINEABLANCA","descripcion":"Gestión Inventario: Informa lentitud - LINEABLANCA"},{"fecha":"2026-02-26","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Sync","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"GUNSTORE_AR","descripcion":"ML - Ventas: No figuran ventas de hoy tras sincro - GUNSTORE_AR"},{"fecha":"2026-02-26","semana":"Semana 1","modulo":"Métricas - Tiendanube","submodulo":"Indicadores / métricas","canal":"Métricas","tipo":"Datos","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"LIFEHD","descripcion":"Metricas - TN: Solapa rentabilidad con porcentajes negativos - LIFEHD"},{"fecha":"2026-02-26","semana":"Semana 1","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Excel","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"FENIXPLAST","descripcion":"TN - Migrador: Excel al 1% da error de migración - FENIXPLAST"},{"fecha":"2026-02-26","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"RENOVATIONHOME","descripcion":"Gestión Inventario: No ve vinculadas publis ML y no sincronizan - RENOVATIONHOME"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Configuración - Operadores","submodulo":"Operadores","canal":"Configuración","tipo":"Backend","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"ALAMBRADOSCAMBREN","descripcion":"Gestion Operadores: Error al cambiar de una cuenta a otra - ALAMBRADOSCAMBREN"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"PLANETASUBLIME","descripcion":"ML - Ventas: Devolvió stock venta despachada pero en EA no figura - PLANETASUBLIME"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"MACARONS","descripcion":"Gestión Inventario: Errores al subir archivo para crear y vincular - MACARONS"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"CELERO BIKES","descripcion":"ML - Ventas: Se vendió producto que no tenía stock - CELERO BIKES"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Validación","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"DAMEREGALOS","descripcion":"ML - Ventas: Ventas con fecha diferente a Mercado Libre - DAMEREGALOS"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"DUPREELECTROSPORTS","descripcion":"Gestión Inventario: No aparece variante de publicación vinculada - DUPREELECTROSPORTS"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Backend","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"DECLIT","descripcion":"ML - Ventas: Monto de facturación no coincide (descuento extra) - DECLIT"},{"fecha":"2026-02-27","semana":"Semana 1","modulo":"Tiendanube - Publicaciones","submodulo":"Publicaciones","canal":"Tiendanube","tipo":"Excel","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"EDIMA","descripcion":"TN - Publicaciones: Error \"Product with such id does not exist\" en excel EDIMA"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"NONINONIBABY","descripcion":"Gestión Inventario: No permite revincular publi desvinculada en ML - NONINONIBABY"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Tiendanube - Publicaciones","submodulo":"Publicaciones","canal":"Tiendanube","tipo":"Validación","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"TECHIQ","descripcion":"TN - Publicaciones: No actualizaron SKUs cambiados desde inventario - TECHIQ"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Suscripción","submodulo":"Dashboard","canal":"General","tipo":"Validación","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"ANABELCOSTANTINO","descripcion":"Suscripción: Pago pendiente en plataforma pero debitado - ANABELCOSTANTINO"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Validación","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"SIXMOTORS","descripcion":"TN - Migrador: Cargo 719 filas y se crearon 1018 consumiendo créditos - SIXMOTORS"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Validación","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"LIFEHD","descripcion":"ML - Ventas: Necesita reporte de Nota de Crédito - LIFEHD"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"GLOBALMARKET11","descripcion":"ML - Multicuenta: Error al activar multistock - GLOBALMARKET11"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"Regalos para Bebés","descripcion":"Gestión Inventario: Vincula publis TN y figura error - Regalos para Bebés"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Configuración - General","submodulo":"Dashboard","canal":"Configuración","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"ITRONICSTIENDA","descripcion":"Configuración: No guarda mensaje automático de comprobante - ITRONICSTIENDA"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Excel","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"LOBBE","descripcion":"TN - Migrador: Error genérico al cargar excel de 10 filas - LOBBE"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Métricas - Stock","submodulo":"Indicadores / métricas","canal":"Métricas","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"LAGURSOCIEDAD","descripcion":"Métricas - Stock: SKU salta de 4 a 24 unidades sin registro - LAGURSOCIEDAD"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"INU_SRL","descripcion":"Gestión Inventario: Error al crear producto y vincular desde alta - INU_SRL"},{"fecha":"2026-03-02","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Publicaciones","canal":"General","tipo":"Backend","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"TF BIKES","descripcion":"Gestión Inventario: Error ID interno al actualizar costos - TF BIKES"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Validación","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"TODOUTILES","descripcion":"TN - Migrador: Filas figuran como \"No migradas\" pero ya existen - TODOUTILES"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"Mercado Pago - Ventas","submodulo":"Ventas","canal":"Mercado Pago","tipo":"Performance","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"DIEGOMARRE","descripcion":"Mercado Pago - Ventas: Proceso facturación masiva clavado en 0% - DIEGOMARRE"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"WooCommerce - Ventas","submodulo":"Ventas","canal":"WooCommerce","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"SUREF","descripcion":"Woocommerce - Ventas: Sincro corrida pero siguen sin aparecer ventas - SUREF"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"LINEABLANCA","descripcion":"Gestión Inventario: Indica que ya está vinculada al intentar vincular - LINEABLANCA"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"Local físico - Compras","submodulo":"Compras","canal":"Local físico","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"WINEBOUTIQUE","descripcion":"Local fisico - Compras: No actualizó stock al cargar compra (solo precio) - WINEBOUTIQUE"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"NONINONIBABY","descripcion":"Gestión Inventario: Error desconocido ML al actualizar variante - NONINONIBABY"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Publicaciones","canal":"General","tipo":"Validación","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"ABRACADABRA","descripcion":"Gestión Inventario: Carga masiva precios/costos no impacta - ABRACADABRA"},{"fecha":"2026-03-03","semana":"Semana 2","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Backend","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"TIENDAFONOPEL","descripcion":"ML - Ventas: Factura sobre monto recibido en ventas con descuentos - TIENDAFONOPEL"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Local físico - Presupuestos","submodulo":"Presupuestos","canal":"Local físico","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"MODAXPRESSBA","descripcion":"Local físico - Presupuestos: No descontó stock y generó sobreventa - MODAXPRESSBA"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Mercado Pago - Ventas","submodulo":"Ventas","canal":"Mercado Pago","tipo":"Performance","severidad":"Urgente","estado":"Nuevo","owner":"Customer","cliente":"DIEGOMARRE","descripcion":"Mercado Pago - Ventas: Facturación 0% (Refuerzo de caso) - DIEGOMARRE"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Validación","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"LIFEHD","descripcion":"ML - Ventas: Lote de Notas de Crédito no avanza - LIFEHD"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Canales externos - Ventas","submodulo":"Legacy / Refactor","canal":"Canales externos","tipo":"Validación","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"EDGEHOG_SUPLEMENTOS","descripcion":"ML/TN - Ventas: Reporta sobreventa - EDGEHOG_SUPLEMENTOS"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Local físico - Emitir comprobantes","submodulo":"Emisión comprobantes","canal":"Local físico","tipo":"Validación","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"LAGURSOCIEDAD","descripcion":"Local fisico - Emitir: Condición Tarjeta sale como \"Contado\" - LAGURSOCIEDAD"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Validación","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"GRAMABI","descripcion":"TN - Migrador: Migración automática duplicó productos con mismo SKU - GRAMABI"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Backend","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"DECO ESTRELLA","descripcion":"ML - Ventas: Error al generar NC (dice que ya existe) - DECO ESTRELLA"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"LUMABLANQUERIA","descripcion":"Gestión Inventario: Error al guardar cambios de SKU en variante - LUMABLANQUERIA"},{"fecha":"2026-03-04","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"GRAMABI","descripcion":"Gestión Inventario: Solicita vinculación de SKU de TN - GRAMABI"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Mercado Libre - Ventas","submodulo":"Ventas","canal":"Mercado Libre","tipo":"Backend","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"LA CASA DEL RENAULT","descripcion":"ML - Ventas: Factura con descuentos desconocidos - LA CASA DEL RENAULT"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Local físico - Compras","submodulo":"Compras","canal":"Local físico","tipo":"UI","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"TRDTECH","descripcion":"Local físico - Compras: No aparecen todos los depósitos para seleccionar - TRDTECH"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Gestión - Comprobantes emitidos","submodulo":"Comprobantes emitidos","canal":"General","tipo":"Backend","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"SYSNEUMATICOS","descripcion":"Gestión Comprobantes: Factura duplicada no se encuentra en EA - SYSNEUMATICOS"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Sincronización stock","canal":"General","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"NONINONIBABY","descripcion":"Gestión Inventario: Stock actualizado en EA no impacta en ML - NONINONIBABY"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Inicio / Dashboard","submodulo":"Dashboard","canal":"General","tipo":"Datos","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"AROMASDELSAHUKAN","descripcion":"Dashboard - Rendimiento: No informa comisión/montos envío - AROMASDELSAHUKAN"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Configuración - General","submodulo":"Dashboard","canal":"Configuración","tipo":"Backend","severidad":"Urgente","estado":"Nuevo","owner":"Customer","cliente":"BARBLOND","descripcion":"Configuración: Facturación automática - BARBLOND"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Local físico - Compras","submodulo":"Compras","canal":"Local físico","tipo":"Validación","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"GENERACIONUNO","descripcion":"Local Fisico - Compras: Carga masiva exitosa pero no se ven compras - GENERACIONUNO"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Mercado Libre - Publicaciones","submodulo":"Publicaciones","canal":"Mercado Libre","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"EVOTECH","descripcion":"ML - Publicaciones: No muestra publis desincronizadas de catálogo - EVOTECH"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"UI","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"MUSICALMONROE","descripcion":"TN - Migrador: No funciona filtro \"Excluir ya migradas\" - MUSICALMONROE"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Sincronización stock","canal":"General","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"TIENDA POINT","descripcion":"Gestión Inventario: No impacta stock de EA en Mercado Libre - TIENDA POINT"},{"fecha":"2026-03-05","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Vinculación publicaciones","canal":"General","tipo":"Sync","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"ABIANTI","descripcion":"Gestión Inventario: Error al vincular publi y guardar cambios - ABIANTI"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Excel Inventario","canal":"General","tipo":"Excel","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"ADSUSPENSION","descripcion":"Gestión Inventario: Error en carga stock masiva sin excel de errores - ADSUSPENSION"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Backend","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"ONFIRE","descripcion":"TN - Migrador: Error en estados de migración de filas - ONFIRE"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Configuración - General","submodulo":"Dashboard","canal":"Configuración","tipo":"Validación","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"TLCM_ZONEX","descripcion":"Telegram: Escaneo QR no permite configurar alertas - TLCM_ZONEX"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Carga masiva","canal":"General","tipo":"Backend","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"FLORIDAHOUSE","descripcion":"Gestión Inventario: Error al crear combo y guardar - FLORIDAHOUSE"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Validación","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"AD SUSPENSION","descripcion":"Gestión Inventario: No permite guardar cambios al modificar SKU - AD SUSPENSION"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"WooCommerce - Ventas","submodulo":"Ventas","canal":"WooCommerce","tipo":"Sync","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"WOOCOMMERCE","descripcion":"Woocommerce - Ventas: No puede facturar (pide vincular ML)"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Validación","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"TECHIQ","descripcion":"TN - Migrador: Se triplicaron publicaciones con variante - TECHIQ"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Local físico - Compras","submodulo":"Compras","canal":"Local físico","tipo":"Sync","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"Mahra Calzados","descripcion":"Local físico - Compras: Compra cargada no impactó en stock - Mahra Calzados"},{"fecha":"2026-03-06","semana":"Semana 2","modulo":"Configuración - General","submodulo":"Dashboard","canal":"Configuración","tipo":"Sync","severidad":"Urgente","estado":"Pendiente QA","owner":"Customer","cliente":"SACTRADING","descripcion":"Telegram: Desvincular segunda cuenta para evitar duplicidad - SACTRADING"},{"fecha":"2026-03-09","semana":"Semana 3","modulo":"Gestión - Inventario","submodulo":"Sincronización stock","canal":"General","tipo":"Sync","severidad":"Alta","estado":"Nuevo","owner":"Customer","cliente":"ARGENFASTCOMAR","descripcion":"Gestión Inventario: Publis TN no toman stock de inventario - ARGENFASTCOMAR"},{"fecha":"2026-03-09","semana":"Semana 3","modulo":"Gestión - Inventario","submodulo":"Variantes / SKU padre","canal":"General","tipo":"Validación","severidad":"Alta","estado":"Pendiente QA","owner":"Customer","cliente":"BAZARGASTROPRECIO","descripcion":"Gestión Inventario: SKU cambiado en Mercado Libre - BAZARGASTROPRECIO"},{"fecha":"2026-03-09","semana":"Semana 3","modulo":"Inicio / Dashboard","submodulo":"Dashboard","canal":"General","tipo":"UI","severidad":"Media","estado":"Pendiente QA","owner":"Customer","cliente":"PLANETA LULU","descripcion":"Dashboard: Etiqueta figura sin imprimir pero ya está impresa - PLANETA LULU"},{"fecha":"2026-03-09","semana":"Semana 3","modulo":"Tiendanube - Migrador","submodulo":"Migrador","canal":"Tiendanube","tipo":"Validación","severidad":"Media","estado":"Nuevo","owner":"Customer","cliente":"GIRANDO","descripcion":"TN - Migrador: Se crearon dos publis en TN a partir de una de ML - GIRANDO"}];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let data = RAW.slice();
+let filterSem = 'Todas';
+let tablePage = 0;
+const PAGE_SIZE = 12;
+let selectedBug = null;
+let charts = {};
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+function count(arr, key) {
+  return arr.reduce((acc, r) => { acc[r[key]] = (acc[r[key]] || 0) + 1; return acc; }, {});
+}
+function topN(obj, n) {
+  return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k,v])=>({name:k,value:v}));
+}
+function sevBadge(sev) {
+  const c = { Urgente:"#FF4D6A", Alta:"#FF7B39", Media:"#FFB800", Baja:"#00E5A0" };
+  const col = c[sev]||'#6B7A99';
+  return `<span class="chip" style="background:${col}22;color:${col};border:1px solid ${col}44">${sev}</span>`;
+}
+function stateBadge(s) {
+  const c = { "Nuevo":"#00C2FF","Pendiente QA":"#A78BFA","En análisis QA":"#FFB800","En desarrollo":"#00E5A0","Cerrado":"#6B7A99","Descartado":"#444" };
+  const col = c[s]||'#6B7A99';
+  return `<span class="chip" style="background:${col}22;color:${col};border:1px solid ${col}44">${s}</span>`;
+}
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// ─── FILTER ─────────────────────────────────────────────────────────────────
+function getFiltered() {
+  return data.filter(r => filterSem === 'Todas' || r.semana === filterSem);
+}
+
+function setFilter(sem) {
+  filterSem = sem;
+  tablePage = 0;
+  document.querySelectorAll('.sem-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === (sem==='Todas'?'Todas las semanas':sem));
+  });
+  document.getElementById('clearBtn').style.display = sem !== 'Todas' ? 'inline-flex' : 'none';
+  render();
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', ['overview','modulos','tabla'][i]===tab));
+  document.querySelectorAll('.tab-content').forEach(d => d.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  render();
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function render() {
+  const filtered = getFiltered();
+  const total = filtered.length;
+  document.getElementById('totalCount').textContent = total + ' bugs';
+
+  renderKPIs(filtered, total);
+
+  const activeTab = document.querySelector('.tab.active');
+  const tabIdx = [...document.querySelectorAll('.tab')].indexOf(activeTab);
+  const tabName = ['overview','modulos','tabla'][tabIdx];
+
+  if (tabName === 'overview') renderOverview(filtered, total);
+  if (tabName === 'modulos') renderModulos(filtered, total);
+  if (tabName === 'tabla') renderTabla(filtered);
+}
+
+function renderKPIs(filtered, total) {
+  const urgAlta = filtered.filter(r=>r.severidad==='Urgente'||r.severidad==='Alta').length;
+  const pctUrgAlta = total ? Math.round(urgAlta/total*100) : 0;
+  const topTipo = topN(count(filtered,'tipo'),1)[0];
+  const topMod = topN(count(filtered,'modulo'),1)[0];
+  const topSub = topN(count(filtered,'submodulo'),1)[0];
+  const topCanal = topN(count(filtered,'canal'),1)[0];
+
+  const tipoColor = TIPO_COLOR[topTipo?.name] || '#0077CC';
+  const pctTopTipo = topTipo ? Math.round(topTipo.value/total*100) : 0;
+  const pctTopMod = topMod ? Math.round(topMod.value/total*100) : 0;
+  const pctTopSub = topSub ? Math.round(topSub.value/total*100) : 0;
+  const pctTopCanal = topCanal ? Math.round(topCanal.value/total*100) : 0;
+  const modUrgAlta = topMod ? filtered.filter(r=>r.modulo===topMod.name&&(r.severidad==='Alta'||r.severidad==='Urgente')).length : 0;
+  const subUrgAlta = topSub ? filtered.filter(r=>r.submodulo===topSub.name&&(r.severidad==='Alta'||r.severidad==='Urgente')).length : 0;
+  const subModCount = topSub ? filtered.filter(r=>r.submodulo===topSub.name).map(r=>r.modulo).filter((v,i,a)=>a.indexOf(v)===i).length : 0;
+  const top2canales = topN(count(filtered,'canal'),2).map(x=>x.name).join(' · ');
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card" style="border-left:4px solid #64748B">
+      <div class="kpi-icon-bg">🐛</div>
+      <div class="kpi-label" style="color:var(--muted)">🐛 Total de bugs</div>
+      <div class="kpi-value" style="font-size:40px;color:var(--text)">${total}</div>
+      <div class="kpi-sub">${filterSem!=='Todas'?filterSem:'todas las semanas'}</div>
+      <div class="tags">
+        <span class="tag" style="background:#D9283D18;color:#D9283D">${urgAlta} Alta/Urgente</span>
+        <span class="tag" style="background:var(--border);color:var(--muted)">${pctUrgAlta}%</span>
+      </div>
+    </div>
+    <div class="kpi-card" style="border-left:4px solid ${tipoColor}">
+      <div class="kpi-icon-bg">⚡</div>
+      <div class="kpi-label" style="color:${tipoColor}">⚡ Tipo de error #1</div>
+      <div class="kpi-value" style="font-size:28px;color:var(--text)">${topTipo?.name||'—'}</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 10px">
+        <span style="font-size:22px;font-weight:700;color:${tipoColor}">${topTipo?.value||0}</span>
+        <span style="font-size:13px;color:var(--muted)">bugs · <strong style="color:${tipoColor}">${pctTopTipo}%</strong></span>
+      </div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="background:${tipoColor};width:${pctTopTipo}%"></div></div>
+      <div style="font-size:11px;color:var(--muted)">
+        ${topTipo?.name==='Sync'?'Fallas de sincronización entre canales':
+          topTipo?.name==='Validación'?'Reglas de negocio sin validar':
+          topTipo?.name==='Backend'?'Errores en lógica de servidor':
+          topTipo?.name==='Performance'?'Lentitud generalizada':'Revisar en detalle'}
+      </div>
+    </div>
+    <div class="kpi-card" style="border-left:4px solid var(--accent)">
+      <div class="kpi-icon-bg">🗂️</div>
+      <div class="kpi-label" style="color:var(--accent)">🗂️ Módulo más afectado</div>
+      <div class="kpi-value" style="font-size:18px;color:var(--text);margin-bottom:4px">${topMod?.name||'—'}</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin:4px 0 10px">
+        <span style="font-size:22px;font-weight:700;color:var(--accent)">${topMod?.value||0}</span>
+        <span style="font-size:13px;color:var(--muted)">bugs · <strong style="color:var(--accent)">${pctTopMod}%</strong></span>
+      </div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="background:var(--accent);width:${pctTopMod}%"></div></div>
+      <div class="tags">
+        <span class="tag" style="background:#D9283D22;color:#D9283D;border:1px solid #D9283D44">🔥 ${modUrgAlta} Alta/Urgente</span>
+        <span class="tag" style="background:var(--border);color:var(--muted)">${topMod?topMod.value-modUrgAlta:0} Media/Baja</span>
+      </div>
+    </div>
+    <div class="kpi-card" style="border-left:4px solid var(--green)">
+      <div class="kpi-icon-bg">🔩</div>
+      <div class="kpi-label" style="color:var(--green)">🔩 Submódulo más afectado</div>
+      <div class="kpi-value" style="font-size:18px;color:var(--text);margin-bottom:4px">${topSub?.name||'—'}</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin:4px 0 10px">
+        <span style="font-size:22px;font-weight:700;color:var(--green)">${topSub?.value||0}</span>
+        <span style="font-size:13px;color:var(--muted)">bugs · <strong style="color:var(--green)">${pctTopSub}%</strong></span>
+      </div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="background:var(--green);width:${pctTopSub}%"></div></div>
+      <div class="tags">
+        <span class="tag" style="background:#D9283D22;color:#D9283D;border:1px solid #D9283D44">🔥 ${subUrgAlta} Alta/Urgente</span>
+        <span class="tag" style="background:var(--border);color:var(--muted)">en ${subModCount} módulos</span>
+      </div>
+    </div>
+    <div class="kpi-card" style="border-left:4px solid var(--orange)">
+      <div class="kpi-icon-bg">📡</div>
+      <div class="kpi-label" style="color:var(--orange)">📡 Canal con más bugs</div>
+      <div class="kpi-value" style="font-size:20px;color:var(--text);margin-bottom:4px">${topCanal?.name||'—'}</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin:4px 0 10px">
+        <span style="font-size:22px;font-weight:700;color:var(--orange)">${topCanal?.value||0}</span>
+        <span style="font-size:13px;color:var(--muted)">bugs · <strong style="color:var(--orange)">${pctTopCanal}%</strong></span>
+      </div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="background:var(--orange);width:${pctTopCanal}%"></div></div>
+      <div style="font-size:11px;color:var(--muted)">Top 2: <strong style="color:var(--text)">${top2canales}</strong></div>
+    </div>
+  `;
+}
+
+function renderOverview(filtered, total) {
+  // Semana chart
+  const semanas = ['Semana 1','Semana 2','Semana 3'];
+  const bySemana = semanas.map(s => ({
+    bugs: filtered.filter(r=>r.semana===s).length,
+    alta: filtered.filter(r=>r.semana===s&&(r.severidad==='Alta'||r.severidad==='Urgente')).length
+  }));
+  destroyChart('chartSemana');
+  charts['chartSemana'] = new Chart(document.getElementById('chartSemana'), {
+    type: 'bar',
+    data: {
+      labels: semanas,
+      datasets: [
+        { label:'Total', data: bySemana.map(x=>x.bugs), backgroundColor:'#0077CC', borderRadius:6 },
+        { label:'Alta/Urgente', data: bySemana.map(x=>x.alta), backgroundColor:'#D9283D', borderRadius:6 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#6B7A99',font:{size:11}}}}, scales:{ x:{ticks:{color:'#6B7A99'},grid:{display:false}}, y:{ticks:{color:'#6B7A99'},grid:{color:'#DDE3EF'}} } }
+  });
+
+  // Sev pie
+  const bySev = ['Urgente','Alta','Media','Baja']
+    .map(s=>({name:s,value:filtered.filter(r=>r.severidad===s).length,color:SEV_COLOR[s]}))
+    .filter(x=>x.value>0);
+  destroyChart('chartSev');
+  charts['chartSev'] = new Chart(document.getElementById('chartSev'), {
+    type:'doughnut',
+    data:{ labels:bySev.map(x=>x.name), datasets:[{ data:bySev.map(x=>x.value), backgroundColor:bySev.map(x=>x.color), borderWidth:0, hoverOffset:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{legend:{display:false}} }
+  });
+  document.getElementById('sevLegend').innerHTML = bySev.map(s=>`
+    <div class="pie-legend-item">
+      <div style="display:flex;align-items:center;gap:8px"><div class="pie-dot" style="background:${s.color}"></div><span style="font-size:13px">${s.name}</span></div>
+      <span style="font-size:16px;font-weight:700;color:${s.color}">${s.value}</span>
+    </div>`).join('');
+
+  // Tipo chart
+  const byTipo = topN(count(filtered,'tipo'),7).map(x=>({...x,color:TIPO_COLOR[x.name]||'#6B7A99'}));
+  destroyChart('chartTipo');
+  charts['chartTipo'] = new Chart(document.getElementById('chartTipo'), {
+    type:'bar',
+    data:{ labels:byTipo.map(x=>x.name), datasets:[{ label:'Bugs', data:byTipo.map(x=>x.value), backgroundColor:byTipo.map(x=>x.color), borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#6B7A99'},grid:{color:'#DDE3EF'}}, y:{ticks:{color:'#0F1D33'},grid:{display:false}} } }
+  });
+
+  // Canal chart
+  const byCanal = topN(count(filtered,'canal'),8).map(x=>({...x,color:CANAL_COLOR[x.name]||'#6B7A99'}));
+  destroyChart('chartCanal');
+  charts['chartCanal'] = new Chart(document.getElementById('chartCanal'), {
+    type:'bar',
+    data:{ labels:byCanal.map(x=>x.name), datasets:[{ label:'Bugs', data:byCanal.map(x=>x.value), backgroundColor:byCanal.map(x=>x.color), borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#6B7A99'},grid:{color:'#DDE3EF'}}, y:{ticks:{color:'#0F1D33'},grid:{display:false}} } }
+  });
+
+  // Insights
+  const t1 = topN(count(filtered,'tipo'),1)[0];
+  const t2 = topN(count(filtered,'tipo'),2)[1];
+  const m1 = topN(count(filtered,'modulo'),1)[0];
+  const s1 = topN(count(filtered,'submodulo'),1)[0];
+  const urgA = filtered.filter(r=>r.severidad==='Urgente'||r.severidad==='Alta').length;
+  const pct = total ? Math.round(urgA/total*100) : 0;
+  const pctM = m1 ? Math.round(m1.value/total*100) : 0;
+  const semPico = ['Semana 1','Semana 2','Semana 3'].map(s=>({s,n:filtered.filter(r=>r.semana===s).length})).sort((a,b)=>b.n-a.n)[0];
+  const top2c = topN(count(filtered,'canal'),2);
+  const modUrgA2 = m1 ? filtered.filter(r=>r.modulo===m1.name&&(r.severidad==='Alta'||r.severidad==='Urgente')).length : 0;
+
+  const lines = [
+    m1 && `🗂️ El módulo más crítico es <b>${m1.name}</b> con ${m1.value} bugs (${pctM}% del total — ${modUrgA2} de ellos Alta/Urgente).`,
+    s1 && `🔩 A nivel submódulo, <b>${s1.name}</b> concentra ${s1.value} reportes — punto de falla más granular a atacar.`,
+    t1 && `⚡ Tipo de error dominante: <b>${t1.name}</b> (${t1.value} casos)${t2?`, seguido de <b>${t2.name}</b> (${t2.value})`:''}. ${t1.name==='Sync'?'Problema sistémico de sincronización.':t1.name==='Validación'?'Reglas de negocio sin validar.':t1.name==='Backend'?'Errores en lógica de servidor.':''}`,
+    semPico && `📅 La semana con más actividad fue <b>${semPico.s}</b> (${semPico.n} bugs).`,
+    `🔥 El <b>${pct}%</b> de los bugs son Alta o Urgente — atención inmediata de Dev.`,
+    top2c.length>0 && `📡 Canales más afectados: <b>${top2c.map(x=>x.name).join('</b> y <b>')}</b>.`
+  ].filter(Boolean);
+
+  document.getElementById('insightsLabel').textContent = `📌 RESUMEN DE INSIGHTS · ${filterSem!=='Todas'?filterSem:'Todas las semanas'}`;
+  document.getElementById('insightsGrid').innerHTML = lines.map(l=>`<div class="insight-item">${l}</div>`).join('');
+}
+
+function renderModulos(filtered, total) {
+  const topModulos = topN(count(filtered,'modulo'),8);
+  const topSubs = topN(count(filtered,'submodulo'),8);
+
+  document.getElementById('modList').innerHTML = topModulos.map((m,i)=>{
+    const pct = total ? Math.round(m.value/total*100) : 0;
+    const urgA = filtered.filter(r=>r.modulo===m.name&&(r.severidad==='Alta'||r.severidad==='Urgente')).length;
+    return `<div class="mod-bar-wrap">
+      <div class="mod-bar-row">
+        <span><span style="color:var(--muted);margin-right:6px">#${i+1}</span>${m.name}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${urgA>0?`<span style="font-size:11px;color:var(--orange);background:#D95B1022;padding:1px 6px;border-radius:4px">${urgA} Alta/Urg</span>`:''}
+          <span style="font-weight:700;color:var(--accent)">${m.value}</span>
+        </div>
+      </div>
+      <div class="mod-bar-track"><div class="mod-bar-fill" style="background:linear-gradient(90deg,#0077CC,#004A88);width:${pct}%"></div></div>
+      <div class="mod-pct">${pct}% del total</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('subList').innerHTML = topSubs.map((m,i)=>{
+    const pct = total ? Math.round(m.value/total*100) : 0;
+    return `<div class="mod-bar-wrap">
+      <div class="mod-bar-row">
+        <span><span style="color:var(--muted);margin-right:6px">#${i+1}</span>${m.name}</span>
+        <span style="font-weight:700;color:var(--green)">${m.value}</span>
+      </div>
+      <div class="mod-bar-track"><div class="mod-bar-fill" style="background:linear-gradient(90deg,#00966A,#006644);width:${pct}%"></div></div>
+      <div class="mod-pct">${pct}% del total</div>
+    </div>`;
+  }).join('');
+
+  // Heatmap
+  const semanas = ['Semana 1','Semana 2','Semana 3'];
+  const topModulos8 = topN(count(filtered,'modulo'),8);
+  let html = `<thead><tr><th>Módulo</th>${semanas.map(s=>`<th style="text-align:center">${s}</th>`).join('')}<th style="text-align:center">Total</th></tr></thead><tbody>`;
+  topModulos8.forEach(m=>{
+    const vals = semanas.map(s=>filtered.filter(r=>r.modulo===m.name&&r.semana===s).length);
+    const maxV = Math.max(...vals, 1);
+    html += `<tr><td>${m.name}</td>${vals.map(v=>{
+      const intensity = v/maxV;
+      const bg = v===0?'transparent':`rgba(0,119,204,${0.08+intensity*0.45})`;
+      return `<td style="background:${bg};color:${v>0?'var(--text)':'var(--muted)'};font-weight:${v>0?600:400}">${v||'—'}</td>`;
+    }).join('')}<td style="text-align:center;font-weight:700;color:var(--accent)">${m.value}</td></tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('heatmapTable').innerHTML = html;
+}
+
+function renderTabla(filtered) {
+  const paged = filtered.slice(tablePage*PAGE_SIZE, (tablePage+1)*PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
+
+  document.getElementById('tableBody').innerHTML = paged.map(r=>`
+    <tr onclick="openModal(${JSON.stringify(r).replace(/'/g,"&apos;").replace(/"/g,'&quot;')})">
+      <td style="color:var(--muted)">${r.fecha}</td>
+      <td style="color:var(--muted)">${r.semana}</td>
+      <td>${r.modulo}</td>
+      <td style="color:var(--muted)">${r.submodulo}</td>
+      <td><span class="chip" style="background:${(CANAL_COLOR[r.canal]||'#6B7A99')}22;color:${CANAL_COLOR[r.canal]||'#6B7A99'}">${r.canal}</span></td>
+      <td><span class="chip" style="background:${(TIPO_COLOR[r.tipo]||'#6B7A99')}22;color:${TIPO_COLOR[r.tipo]||'#6B7A99'}">${r.tipo}</span></td>
+      <td>${sevBadge(r.severidad)}</td>
+      <td>${stateBadge(r.estado)}</td>
+      <td style="color:var(--muted)">${r.cliente||'—'}</td>
+      <td>${r.descripcion}</td>
+    </tr>`).join('');
+
+  document.getElementById('pageInfo').textContent = `Mostrando ${tablePage*PAGE_SIZE+1}–${Math.min((tablePage+1)*PAGE_SIZE,filtered.length)} de ${filtered.length}`;
+  document.getElementById('pageBtns').innerHTML = Array.from({length:totalPages},(_,i)=>`
+    <button class="page-btn ${i===tablePage?'active':''}" onclick="setPage(${i})">${i+1}</button>`).join('');
+}
+
+function setPage(p) { tablePage = p; render(); }
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openModal(bugJson) {
+  const r = typeof bugJson === 'string' ? JSON.parse(bugJson) : bugJson;
+  document.getElementById('modalBadges').innerHTML = sevBadge(r.severidad) + ' ' + stateBadge(r.estado);
+  document.getElementById('modalDesc').textContent = r.descripcion;
+  document.getElementById('modalGrid').innerHTML = [
+    ['📅 Fecha', r.fecha], ['📅 Semana', r.semana],
+    ['🗂️ Módulo', r.modulo], ['🔩 Submódulo', r.submodulo],
+    ['📡 Canal', r.canal], ['⚙️ Tipo', r.tipo],
+    ['👤 Cliente', r.cliente||'—'], ['👥 Owner', r.owner]
+  ].map(([l,v])=>`
+    <div class="modal-field">
+      <div class="modal-field-label">${l}</div>
+      <div class="modal-field-value">${v}</div>
+    </div>`).join('');
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+
+// ─── FILE UPLOAD ─────────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, {type:'binary'});
+      const ws = wb.Sheets['Registro_Bugs'];
+      if (!ws) { alert("No se encontró la hoja 'Registro_Bugs'"); return; }
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+      const parsed = rows.slice(2).filter(r=>r[0]).map(r=>({
+        fecha: r[0] ? String(r[0]).slice(0,10) : '',
+        semana: r[1]||'', modulo: r[3]||'', submodulo: r[4]||'',
+        canal: r[5]||'', tipo: r[6]||'', severidad: r[7]||'',
+        estado: r[8]||'', owner: r[9]||'', cliente: r[10]||'',
+        descripcion: r[13]||'', reincidente: r[15]||'', tipoReporte: r[17]||''
+      }));
+      data = parsed;
+      filterSem = 'Todas';
+      tablePage = 0;
+      document.querySelectorAll('.sem-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+      document.getElementById('clearBtn').style.display = 'none';
+      render();
+      alert(`✅ ${parsed.length} bugs cargados exitosamente`);
+    } catch(err) { alert('Error al procesar el archivo: ' + err.message); }
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = '';
+});
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
